@@ -6,7 +6,9 @@ import * as SVG from 'svgson';
 import ImageMin from 'imagemin';
 import ImageMinWebp from 'imagemin-webp';
 import * as path from 'path';
+import * as svgo from 'svgo';
 
+// Map over all objects/arrays in the parsed SVG to find images
 const uberMap = (obj, env) => {
   if (obj.name === 'image') return handleImage(obj, env);
   if (Array.isArray(obj)) return obj.map(o => uberMap(o, env));
@@ -17,6 +19,7 @@ const uberMap = (obj, env) => {
   }, {})
 };
 
+// I hate global state but here we go
 let index = 0;
 const images = [];
 const handleImage = (image, { outputFolder, inputFileName }) => {
@@ -68,6 +71,7 @@ if (!images.length) {
   process.exit(1);
 }
 
+// Compress and resize all images
 await Promise.all(images.map(async ({ filePath, width, height }, i) => {
   console.log(`Compressing image ${i + 1}/${images.length}`)
   console.log(resize);
@@ -85,7 +89,7 @@ await Promise.all(images.map(async ({ filePath, width, height }, i) => {
 }));
 
 console.log('Writing SVG');
-fs.writeFileSync(path.join(outputFolder, `${inputFileName}.svg`), SVG.stringify(newSVG));
+fs.writeFileSync(path.join(outputFolder, `${inputFileName}.svg`), svgo.optimize(SVG.stringify(newSVG)).data);
 
 // Delete extracted files
 if (!keepExtracted)
