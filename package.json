@@ -1,0 +1,27 @@
+{
+  "name": "svg-mannen",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "MIT",
+  "bin": {
+    "svg-mannen": "./index.js"
+  },
+  "dependencies": {
+    "imagemin": "^8.0.0",
+    "imagemin-webp": "^6.0.0",
+    "svg-parser": "^2.0.4",
+    "svgson": "^5.2.1",
+    "yargs": "^17.0.1"
+  },
+  "devDependencies": {
+    "@types/imagemin": "^7.0.0",
+    "@types/imagemin-webp": "^5.1.1",
+    "@types/yargs": "^16.0.1"
+  }
+}

@@ -1,3 +1,10 @@
+*.svg
+*.png
+*.jpg
+*.webp
+test/
+package-lock.json
+
 # Logs
 logs
 *.log
