@@ -18,6 +18,7 @@ const uberMap = (obj, env) => {
 };
 
 let index = 0;
+const images = [];
 const handleImage = (image, { outputFolder, inputFileName }) => {
   if (!image.attributes || !image.attributes['xlink:href'] || !image.attributes['xlink:href'].startsWith('data:image'))
     return image;
@@ -25,7 +26,11 @@ const handleImage = (image, { outputFolder, inputFileName }) => {
   const href = image.attributes['xlink:href'];
   const base64 = href.slice(href.indexOf(',') + 1);
   const outputFileName = `${inputFileName}_${index++}`;
-  fs.writeFileSync(path.join(outputFolder, `${outputFileName}.png`), base64, { encoding: 'base64' })
+  const outputFilePath = path.join(outputFolder, `${outputFileName}.png`);
+
+  images.push({ filePath: outputFilePath, width: image.attributes.width, height: image.attributes.height })
+  fs.writeFileSync(outputFilePath, base64, { encoding: 'base64' })
+
   return { ...image, attributes: { ...image.attributes, 'xlink:href': `${outputFileName}.webp` } };
 };
 
@@ -36,10 +41,12 @@ const options = Yargs(hideBin(process.argv))
   .option('i', { alias: 'input', description: 'Input SVG file', type: 'string', demandOption: true })
   .option('k', { alias: 'keep', description: 'Keep extracted images', type: 'boolean', default: false })
   .option('q', { alias: 'quality', description: 'WebP quality (0 - 100)', default: 80, type: 'number' })
+  .option('r', { alias: 'resize-coefficient', description: 'Resize coefficient', default: 1, type: 'number' })
   .argv;
 
 const keepExtracted = options.k;
 const quality = options.q;
+const resize = options.r;
 
 // Read file
 const inputPath = options.i;
@@ -56,8 +63,26 @@ const parsed = SVG.parseSync(file);
 console.log('Deconstructing SVG');
 const newSVG = uberMap(parsed, { outputFolder, inputFileName });
 
-console.log('Compressing images');
-await ImageMin([`${outputFolder}${path.sep}*.{jpg,png}`], { destination: outputFolder, plugins: [ImageMinWebp({ quality })] });
+if (!images.length) {
+  console.log('No images found!')
+  process.exit(1);
+}
+
+await Promise.all(images.map(async ({ filePath, width, height }, i) => {
+  console.log(`Compressing image ${i + 1}/${images.length}`)
+  console.log(resize);
+  await ImageMin([filePath], {
+    destination: outputFolder,
+    plugins: [
+      ImageMinWebp(
+        {
+          quality,
+          method: 6,
+          resize: { width: width * resize, height: height * resize }
+        })
+    ]
+  });
+}));
 
 console.log('Writing SVG');
 fs.writeFileSync(path.join(outputFolder, `${inputFileName}.svg`), SVG.stringify(newSVG));
