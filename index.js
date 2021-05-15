@@ -22,7 +22,7 @@ const uberMap = (obj, env) => {
 // I hate global state but here we go
 let index = 0;
 const images = [];
-const handleImage = (image, { outputFolder, inputFileName }) => {
+const handleImage = (image, { outputFolder, inputFileName, hrefPrefix }) => {
   if (!image.attributes || !image.attributes['xlink:href'] || !image.attributes['xlink:href'].startsWith('data:image'))
     return image;
 
@@ -34,22 +34,25 @@ const handleImage = (image, { outputFolder, inputFileName }) => {
   images.push({ filePath: outputFilePath, width: image.attributes.width, height: image.attributes.height })
   fs.writeFileSync(outputFilePath, base64, { encoding: 'base64' })
 
-  return { ...image, attributes: { ...image.attributes, 'xlink:href': `${outputFileName}.webp` } };
+  return { ...image, attributes: { ...image.attributes, 'xlink:href': `${hrefPrefix}${outputFileName}.webp` } };
 };
 
 
 // Arguments
 const options = Yargs(hideBin(process.argv))
   .usage('svg-mannen')
+  .version('1.0.0')
   .option('i', { alias: 'input', description: 'Input SVG file', type: 'string', demandOption: true })
   .option('k', { alias: 'keep', description: 'Keep extracted images', type: 'boolean', default: false })
   .option('q', { alias: 'quality', description: 'WebP quality (0 - 100)', default: 80, type: 'number' })
   .option('r', { alias: 'resize-coefficient', description: 'Resize coefficient', default: 1, type: 'number' })
+  .option('p', { alias: 'href-prefix', description: 'Prefix for SVG hrefs to images, must end with /', default: '', type: 'string' })
   .argv;
 
 const keepExtracted = options.k;
 const quality = options.q;
 const resize = options.r;
+const hrefPrefix = options.p;
 
 // Read file
 const inputPath = options.i;
@@ -64,7 +67,7 @@ console.log('Parsing SVG');
 const parsed = SVG.parseSync(file);
 
 console.log('Deconstructing SVG');
-const newSVG = uberMap(parsed, { outputFolder, inputFileName });
+const newSVG = uberMap(parsed, { outputFolder, inputFileName, hrefPrefix });
 
 if (!images.length) {
   console.log('No images found!')
@@ -74,7 +77,6 @@ if (!images.length) {
 // Compress and resize all images
 await Promise.all(images.map(async ({ filePath, width, height }, i) => {
   console.log(`Compressing image ${i + 1}/${images.length}`)
-  console.log(resize);
   await ImageMin([filePath], {
     destination: outputFolder,
     plugins: [
