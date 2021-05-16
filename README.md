@@ -27,6 +27,7 @@ node .
   -q, --quality             WebP quality (0 - 100)                              [number] [default: 80]
   -r, --resize-coefficient  Resize coefficient                                   [number] [default: 1]
   -p, --href-prefix         Prefix for SVG hrefs to images, must end with /     [string] [default: ""]
+  -z, --gzip                Output a gzipped svgz file                      [boolean] [default: false]
 ```
 
 ### Output
