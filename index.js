@@ -72,7 +72,7 @@ const options = Yargs(hideBin(process.argv))
   .option('q', { alias: 'quality', description: 'WebP quality (0 - 100)', default: 80, type: 'number' })
   .option('r', { alias: 'resize-coefficient', description: 'Resize coefficient', default: 1, type: 'number' })
   .option('p', { alias: 'href-prefix', description: 'Prefix for SVG hrefs to images, must end with /', default: '', type: 'string' })
-  .option('z', { alias: 'gzip', description: 'Specified wether to output a gzipped svgz file or not', type: 'boolean', default: false })
+  .option('z', { alias: 'gzip', description: 'Output a gzipped svgz file', type: 'boolean', default: false })
   .argv;
 
 const quality = options.q;
