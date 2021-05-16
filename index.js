@@ -24,10 +24,12 @@ const uberMap = async (obj, env) => {
 // I hate global state but here we go
 let index = 0;
 const handleImage = async (image, { outputFolder, inputFileName, hrefPrefix, mode, resize }) => {
-  if (!image.attributes || !image.attributes['xlink:href'] || !image.attributes['xlink:href'].startsWith('data:image'))
+  // Images may be embedded either in `xlink:href` or just `href`
+  const hrefProp = Boolean(image.attributes) && image.attributes['xlink:href'] ? 'xlink:href' : image.attributes.href ? 'href' : null;
+  if (!hrefProp || !image.attributes[hrefProp].startsWith('data:image'))
     return image;
 
-  const href = image.attributes['xlink:href'];
+  const href = image.attributes[hrefProp];
   const base64 = href.slice(href.indexOf(',') + 1);
   const buffer = Buffer.from(base64, 'base64');
 
@@ -53,9 +55,9 @@ const handleImage = async (image, { outputFolder, inputFileName, hrefPrefix, mod
   // Either write the file to `outputFilePath` or embed it with base64
   if (mode === 'extract') {
     fs.writeFileSync(outputFilePath, compressed)
-    return { ...image, attributes: { ...image.attributes, 'xlink:href': `${hrefPrefix}${outputFileName}.webp` } };
+    return { ...image, attributes: { ...image.attributes, href: `${hrefPrefix}${outputFileName}.webp` } };
   } else {
-    return { ...image, attributes: { ...image.attributes, 'xlink:href': 'data:image/webp;base64,' + compressed.toString('base64') } }
+    return { ...image, attributes: { ...image.attributes, href: 'data:image/webp;base64,' + compressed.toString('base64') } }
   }
 };
 
