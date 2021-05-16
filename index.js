@@ -9,6 +9,7 @@ import ImageMinWebp from 'imagemin-webp';
 import * as path from 'path';
 import * as svgo from 'svgo';
 import Bluebird from 'bluebird';
+import { gzipSync } from 'zlib';
 
 // Map over all objects/arrays in the parsed SVG to find images
 const uberMap = async (obj, env) => {
@@ -71,12 +72,14 @@ const options = Yargs(hideBin(process.argv))
   .option('q', { alias: 'quality', description: 'WebP quality (0 - 100)', default: 80, type: 'number' })
   .option('r', { alias: 'resize-coefficient', description: 'Resize coefficient', default: 1, type: 'number' })
   .option('p', { alias: 'href-prefix', description: 'Prefix for SVG hrefs to images, must end with /', default: '', type: 'string' })
+  .option('z', { alias: 'gzip', description: 'Specified wether to output a gzipped svgz file or not', type: 'boolean', default: false })
   .argv;
 
 const quality = options.q;
 const resize = options.r;
 const hrefPrefix = options.p;
 const mode = options.m === 'embed' || options.m === 'extract' ? options.m : 'extract';
+const gzip = options.z;
 
 // Read file
 const inputPath = options.i;
@@ -94,4 +97,5 @@ console.log('Deconstructing SVG');
 const newSVG = await uberMap(parsed, { outputFolder, inputFileName, hrefPrefix, mode, resize });
 
 console.log('Writing SVG');
-fs.writeFileSync(path.join(outputFolder, `${inputFileName}.svg`), svgo.optimize(SVG.stringify(newSVG)).data);
+const outSVG = svgo.optimize(SVG.stringify(newSVG)).data;
+fs.writeFileSync(path.join(outputFolder, `${inputFileName}.svg${gzip ? 'z' : ''}`), gzip ? gzipSync(outSVG) : outSVG);
