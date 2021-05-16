@@ -1,4 +1,5 @@
-#!/usr/bin/env node
+#!/usr/bin/env node¨
+
 import Yargs from 'yargs';
 import { hideBin } from 'yargs/helpers'
 import * as fs from 'fs';
@@ -7,34 +8,55 @@ import ImageMin from 'imagemin';
 import ImageMinWebp from 'imagemin-webp';
 import * as path from 'path';
 import * as svgo from 'svgo';
+import Bluebird from 'bluebird';
 
 // Map over all objects/arrays in the parsed SVG to find images
-const uberMap = (obj, env) => {
-  if (obj.name === 'image') return handleImage(obj, env);
-  if (Array.isArray(obj)) return obj.map(o => uberMap(o, env));
+const uberMap = async (obj, env) => {
+  if (obj.name === 'image') return await handleImage(obj, env);
+  if (Array.isArray(obj)) return await Promise.all(obj.map(async (o) => await uberMap(o, env)));
   if (typeof obj !== 'object') return obj;
-  return Object.keys(obj).reduce((acc, key) => {
-    acc[key] = uberMap(obj[key], env);
+  return await Bluebird.reduce(Object.keys(obj), async (acc, key) => {
+    acc[key] = await uberMap(obj[key], env);
     return acc;
   }, {})
 };
 
 // I hate global state but here we go
 let index = 0;
-const images = [];
-const handleImage = (image, { outputFolder, inputFileName, hrefPrefix }) => {
+const handleImage = async (image, { outputFolder, inputFileName, hrefPrefix, mode, resize }) => {
   if (!image.attributes || !image.attributes['xlink:href'] || !image.attributes['xlink:href'].startsWith('data:image'))
     return image;
 
   const href = image.attributes['xlink:href'];
   const base64 = href.slice(href.indexOf(',') + 1);
+  const buffer = Buffer.from(base64, 'base64');
+
   const outputFileName = `${inputFileName}_${index++}`;
-  const outputFilePath = path.join(outputFolder, `${outputFileName}.png`);
+  const outputFilePath = path.join(outputFolder, `${outputFileName}.webp`);
 
-  images.push({ filePath: outputFilePath, width: image.attributes.width, height: image.attributes.height })
-  fs.writeFileSync(outputFilePath, base64, { encoding: 'base64' })
+  const [width, height] = [image.attributes.width, image.attributes.height];
 
-  return { ...image, attributes: { ...image.attributes, 'xlink:href': `${hrefPrefix}${outputFileName}.webp` } };
+  // Compress the image from the buffer
+  console.log(`Compressing image ${index + 1}`);
+  const compressed = await ImageMin.buffer(buffer, {
+    destination: outputFolder,
+    plugins: [
+      ImageMinWebp(
+        {
+          quality,
+          method: 6,
+          resize: { width: width * resize, height: height * resize }
+        })
+    ]
+  });
+
+  // Either write the file to `outputFilePath` or embed it with base64
+  if (mode === 'extract') {
+    fs.writeFileSync(outputFilePath, compressed)
+    return { ...image, attributes: { ...image.attributes, 'xlink:href': `${hrefPrefix}${outputFileName}.webp` } };
+  } else {
+    return { ...image, attributes: { ...image.attributes, 'xlink:href': 'data:image/webp;base64,' + compressed.toString('base64') } }
+  }
 };
 
 
@@ -43,16 +65,16 @@ const options = Yargs(hideBin(process.argv))
   .usage('svg-mannen')
   .version('1.0.0')
   .option('i', { alias: 'input', description: 'Input SVG file', type: 'string', demandOption: true })
-  .option('k', { alias: 'keep', description: 'Keep extracted images', type: 'boolean', default: false })
+  .option('m', { alias: 'mode', description: "Mode: 'embed' or 'extract'", type: 'string', default: 'extract' })
   .option('q', { alias: 'quality', description: 'WebP quality (0 - 100)', default: 80, type: 'number' })
   .option('r', { alias: 'resize-coefficient', description: 'Resize coefficient', default: 1, type: 'number' })
   .option('p', { alias: 'href-prefix', description: 'Prefix for SVG hrefs to images, must end with /', default: '', type: 'string' })
   .argv;
 
-const keepExtracted = options.k;
 const quality = options.q;
 const resize = options.r;
 const hrefPrefix = options.p;
+const mode = options.m === 'embed' || options.m === 'extract' ? options.m : 'extract';
 
 // Read file
 const inputPath = options.i;
@@ -67,34 +89,7 @@ console.log('Parsing SVG');
 const parsed = SVG.parseSync(file);
 
 console.log('Deconstructing SVG');
-const newSVG = uberMap(parsed, { outputFolder, inputFileName, hrefPrefix });
-
-if (!images.length) {
-  console.log('No images found!')
-  process.exit(1);
-}
-
-// Compress and resize all images
-await Promise.all(images.map(async ({ filePath, width, height }, i) => {
-  console.log(`Compressing image ${i + 1}/${images.length}`)
-  await ImageMin([filePath], {
-    destination: outputFolder,
-    plugins: [
-      ImageMinWebp(
-        {
-          quality,
-          method: 6,
-          resize: { width: width * resize, height: height * resize }
-        })
-    ]
-  });
-}));
+const newSVG = await uberMap(parsed, { outputFolder, inputFileName, hrefPrefix, mode, resize });
 
 console.log('Writing SVG');
 fs.writeFileSync(path.join(outputFolder, `${inputFileName}.svg`), svgo.optimize(SVG.stringify(newSVG)).data);
-
-// Delete extracted files
-if (!keepExtracted)
-  fs.readdirSync(outputFolder)
-    .filter(f => f.startsWith('test') && f.endsWith('.png'))
-    .forEach(f => fs.unlinkSync(`${outputFolder}${path.sep}${f}`));

@@ -13,6 +13,7 @@
     "svg-mannen": "./index.js"
   },
   "dependencies": {
+    "bluebird": "^3.7.2",
     "imagemin": "^8.0.0",
     "imagemin-webp": "^6.0.0",
     "svg-parser": "^2.0.4",
