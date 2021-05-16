@@ -2,13 +2,13 @@
   "name": "svg-mannen",
   "version": "1.0.0",
   "type": "module",
-  "description": "",
+  "description": "A Node.js command-line program that optimizes SVG files with embedded base64-encoded images by encoding (and optionally resizing) the images into the WebP format and run SVGO on the final SVG file.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
-  "license": "MIT",
+  "author": "mightynerd",
+  "license": "GPL",
   "bin": {
     "svg-mannen": "./index.js"
   },
