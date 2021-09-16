@@ -56,9 +56,9 @@ const handleImage = async (image, { outputFolder, inputFileName, hrefPrefix, mod
   // Either write the file to `outputFilePath` or embed it with base64
   if (mode === 'extract') {
     fs.writeFileSync(outputFilePath, compressed)
-    return { ...image, attributes: { ...image.attributes, href: `${hrefPrefix}${outputFileName}.webp` } };
+    return { ...image, attributes: { ...image.attributes, [hrefProp]: `${hrefPrefix}${outputFileName}.webp` } };
   } else {
-    return { ...image, attributes: { ...image.attributes, href: 'data:image/webp;base64,' + compressed.toString('base64') } }
+    return { ...image, attributes: { ...image.attributes, [hrefProp]: 'data:image/webp;base64,' + compressed.toString('base64') } }
   }
 };
 
